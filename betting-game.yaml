@@ -1,0 +1,73 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: betting-game-service
+spec:
+  selector:
+    app: betting-game
+  ports:
+    - protocol: "TCP"
+      # Port accessible inside cluster
+      port: 8081
+      # Port to forward to inside the pod
+      targetPort: 8080
+      # Port accessible outside cluster
+      nodePort: 30003
+  type: LoadBalancer
+
+
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: betting-game-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: betting-game
+    spec:
+      containers:
+        - name: betting-game
+          image: bitfroest/euro2016
+          imagePullPolicy: Always
+          env:
+          - name: DB_HOST
+            value: "statefulset"
+          - name: DB_USER
+            value: "primaryuser"
+          - name: DB_PASSWORD
+            value: "password"
+          - name: DB_NAME
+            value: "userdb"
+          - name: SESSION_SECRET
+            value: "blabla"
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 25m
+              memory: 100Mi
+            requests:
+              cpu: 25m
+              memory: 100Mi
+
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: betting-game-agent
+spec:
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: betting-game-deployment
+  minReplicas: 1
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 40
+status:
+  currentReplicas: 1
+  desiredReplicas: 1
